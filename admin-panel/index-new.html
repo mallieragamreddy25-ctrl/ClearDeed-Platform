@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClearDeed Admin - Loading Dashboard</title>
+  <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; }
+    #root { width: 100%; height: 100vh; }
+    .loader { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; background: linear-gradient(135deg, #003366 0%, #004488 100%); }
+    .loader-text { color: white; font-size: 24px; font-weight: bold; margin-top: 20px; }
+    .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .error { color: #ef4444; font-size: 16px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="loader">
+      <div class="spinner"></div>
+      <div class="loader-text">Initializing ClearDeed Admin Dashboard</div>
+      <div id="status" class="loader-text" style="font-size: 14px; margin-top: 40px; color: #ccc;"></div>
+    </div>
+  </div>
+
+  <script>
+    // Show loading status
+    const statusEl = document.getElementById('status');
+    
+    // Check if API is available
+    async function checkAPI() {
+      try {
+        const response = await fetch('http://localhost:3000/health');
+        if (response.ok) {
+          statusEl.textContent = '✅ API Connected';
+          statusEl.style.color = '#10b981';
+          setTimeout(() => {
+            statusEl.innerHTML = `
+              <div style="text-align: center;">
+                <h2 style="margin: 0; color: white;">Dashboard Ready</h2>
+                <p style="color: #ccc; margin-top: 10px;">Loading React application...</p>
+              </div>
+            `;
+          }, 1000);
+        } else {
+          statusEl.textContent = '❌ API Error: ' + response.status;
+          statusEl.style.color = '#ef4444';
+        }
+      } catch (error) {
+        statusEl.textContent = '❌ Cannot connect to API (localhost:3000)';
+        statusEl.style.color = '#ef4444';
+        console.error('API Check Error:', error);
+      }
+    }
+
+    // Check API every 2 seconds
+    setInterval(checkAPI, 2000);
+    checkAPI();
+  </script>
+
+  <!-- Load Vite app -->
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+</html>

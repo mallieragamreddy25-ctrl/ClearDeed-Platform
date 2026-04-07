@@ -1,0 +1,1101 @@
+openapi: 3.0.0
+info:
+  title: ClearDeed API
+  version: 1.0.0
+  description: End-to-end verified real estate & investment execution platform
+  contact:
+    name: ClearDeed Advisors LLP
+
+servers:
+  - url: https://api.cleardeed.com/v1
+    description: Production
+  - url: http://localhost:3000/v1
+    description: Development
+
+paths:
+  # ======================== AUTH ========================
+  /auth/send-otp:
+    post:
+      summary: Send OTP to mobile number
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mobile_number:
+                  type: string
+                  example: "+919876543210"
+              required:
+                - mobile_number
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  request_id:
+                    type: string
+        '429':
+          description: Too many OTP requests (rate limited)
+        '400':
+          description: Invalid mobile number
+
+  /auth/verify-otp:
+    post:
+      summary: Verify OTP and login/signup
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mobile_number:
+                  type: string
+                otp:
+                  type: string
+              required:
+                - mobile_number
+                - otp
+      responses:
+        '200':
+          description: OTP verified, user logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  is_new_user:
+                    type: boolean
+        '401':
+          description: Invalid OTP
+        '423':
+          description: Too many failed attempts, account locked
+
+  /auth/logout:
+    post:
+      summary: Logout user
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+
+  # ======================== PROFILE ========================
+  /profile:
+    get:
+      summary: Get current user profile
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+    post:
+      summary: Create/complete user profile after OTP verification
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                city:
+                  type: string
+                profile_type:
+                  type: string
+                  enum: ['buyer', 'seller', 'investor']
+                budget_range:
+                  type: string
+                  example: "50-100L"
+                net_worth_range:
+                  type: string
+                referral_mobile_number:
+                  type: string
+              required:
+                - full_name
+                - email
+                - city
+                - profile_type
+                - referral_mobile_number
+      responses:
+        '201':
+          description: Profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid referral number or missing fields
+
+    put:
+      summary: Update user profile
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                city:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated
+
+  /profile/mode-select:
+    post:
+      summary: Select active role (buyer/seller/investor)
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: ['buyer', 'seller', 'investor']
+      responses:
+        '200':
+          description: Role selected
+
+  # ======================== PROPERTIES (BUY MODULE) ========================
+  /properties:
+    get:
+      summary: List verified properties (buyer view)
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: ['land', 'individual_house', 'commercial', 'agriculture']
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of verified properties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PropertyCard'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      summary: List properties for seller upload
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  type: string
+                  enum: ['land', 'individual_house', 'commercial', 'agriculture']
+                title:
+                  type: string
+                location:
+                  type: string
+                city:
+                  type: string
+                pincode:
+                  type: string
+                price:
+                  type: number
+                area:
+                  type: number
+                area_unit:
+                  type: string
+                  enum: ['sqft', 'sqm']
+                ownership_status:
+                  type: string
+                description:
+                  type: string
+              required:
+                - category
+                - title
+                - location
+                - city
+                - price
+                - area
+      responses:
+        '201':
+          description: Property created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+
+  /properties/{property_id}:
+    get:
+      summary: Get property details with images, documents, verification status
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Property details with gallery and verification
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyDetail'
+        '404':
+          description: Property not found
+
+    put:
+      summary: Update property (seller only, if under_verification or submitted)
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                area:
+                  type: number
+      responses:
+        '200':
+          description: Property updated
+
+  /properties/{property_id}/upload-documents:
+    post:
+      summary: Upload property documents
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                document_type:
+                  type: string
+                  enum: ['title_deed', 'survey', 'tax_proof', 'approval_letter']
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Document uploaded
+
+  /properties/{property_id}/upload-gallery:
+    post:
+      summary: Upload property images
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                image_title:
+                  type: string
+      responses:
+        '200':
+          description: Image uploaded
+
+  /properties/{property_id}/express-interest:
+    post:
+      summary: Buyer expresses interest in property
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Interest recorded
+
+  /properties/{property_id}/status:
+    get:
+      summary: Get property verification status (seller view)
+      tags:
+        - Properties
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Property status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['submitted', 'under_verification', 'verified', 'live', 'sold', 'rejected']
+                  verification_summary:
+                    type: string
+                  rejection_reason:
+                    type: string
+
+  # ======================== PROJECTS (INVESTMENT) ========================
+  /projects:
+    get:
+      summary: List verified investment projects
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: min_investment
+          in: query
+          schema:
+            type: number
+        - name: max_investment
+          in: query
+          schema:
+            type: number
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectCard'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /projects/{project_id}:
+    get:
+      summary: Get project details
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+
+  /projects/{project_id}/express-interest:
+    post:
+      summary: Investor expresses interest in project
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Interest recorded
+
+  # ======================== DEALS (ADMIN) ========================
+  /deals:
+    post:
+      summary: Create deal (admin only)
+      tags:
+        - Deals
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                buyer_user_id:
+                  type: integer
+                seller_user_id:
+                  type: integer
+                property_id:
+                  type: integer
+                referral_partners:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      referral_partner_id:
+                        type: integer
+                      side:
+                        type: string
+                        enum: ['buyer', 'seller']
+                      commission_percentage:
+                        type: number
+              required:
+                - buyer_user_id
+                - seller_user_id
+                - property_id
+      responses:
+        '201':
+          description: Deal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+  /deals/{deal_id}:
+    get:
+      summary: Get deal details
+      tags:
+        - Deals
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deal_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deal details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+  /deals/{deal_id}/close:
+    post:
+      summary: Close deal (admin only)
+      tags:
+        - Deals
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deal_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deal closed, commissions calculated
+
+  # ======================== COMMISSIONS ========================
+  /commissions:
+    get:
+      summary: Get commission ledger for current user/partner
+      tags:
+        - Commissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: ['pending', 'approved', 'paid']
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Commission records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CommissionRecord'
+                  total_pending:
+                    type: number
+                  total_paid:
+                    type: number
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # ======================== REFERRAL PARTNERS ========================
+  /referral-partners:
+    post:
+      summary: Register as referral partner (admin creates)
+      tags:
+        - Referral Partners
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mobile_number:
+                  type: string
+                full_name:
+                  type: string
+                email:
+                  type: string
+                city:
+                  type: string
+                partner_type:
+                  type: string
+                  enum: ['agent', 'verified_user']
+                agency_name:
+                  type: string
+                agent_license_number:
+                  type: string
+      responses:
+        '201':
+          description: Referral partner registered
+
+  /referral-partners/{partner_id}:
+    get:
+      summary: Get referral partner details
+      tags:
+        - Referral Partners
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Partner details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralPartner'
+
+  /referral-partners/{partner_id}/pay-maintenance-fee:
+    post:
+      summary: Record yearly maintenance fee payment (admin)
+      tags:
+        - Referral Partners
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payment_reference:
+                  type: string
+                fee_amount:
+                  type: number
+                  default: 999
+      responses:
+        '200':
+          description: Fee recorded, commissions enabled
+
+  # ======================== NOTIFICATIONS ========================
+  /notifications:
+    get:
+      summary: Get user notifications
+      tags:
+        - Notifications
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: User notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # ======================== SELLER DASHBOARD ========================
+  /seller/dashboard:
+    get:
+      summary: Get seller dashboard summary
+      tags:
+        - Seller
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Seller stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_properties_listed:
+                    type: integer
+                  verified_properties:
+                    type: integer
+                  active_listings:
+                    type: integer
+                  sold_properties:
+                    type: integer
+                  pending_verification:
+                    type: integer
+
+  /seller/properties:
+    get:
+      summary: Get all seller's properties
+      tags:
+        - Seller
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Seller's properties
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  # ======================== REFERRAL LINK ========================
+  /referral-link/{mobile_number}:
+    get:
+      summary: Secure referral partner dashboard link (deal-only view)
+      tags:
+        - Referral Link
+      parameters:
+        - name: mobile_number
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Referral partner dashboard access
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deals:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        deal_id:
+                          type: integer
+                        status:
+                          type: string
+                        transaction_value:
+                          type: number
+                        commission_earned:
+                          type: number
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        mobile_number:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+        city:
+          type: string
+        profile_type:
+          type: string
+          enum: ['buyer', 'seller', 'investor']
+        is_verified:
+          type: boolean
+
+    PropertyCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        location:
+          type: string
+        city:
+          type: string
+        price:
+          type: number
+        area:
+          type: number
+        area_unit:
+          type: string
+        category:
+          type: string
+        image_url:
+          type: string
+        verified_badge:
+          type: boolean
+        status:
+          type: string
+
+    PropertyDetail:
+      allOf:
+        - $ref: '#/components/schemas/PropertyCard'
+        - type: object
+          properties:
+            description:
+              type: string
+            ownership_status:
+              type: string
+            gallery:
+              type: array
+              items:
+                type: object
+                properties:
+                  image_url:
+                    type: string
+                  image_title:
+                    type: string
+            documents:
+              type: array
+              items:
+                type: object
+                properties:
+                  document_type:
+                    type: string
+                  document_name:
+                    type: string
+            verification_summary:
+              type: string
+
+    Property:
+      type: object
+      properties:
+        id:
+          type: integer
+        seller_user_id:
+          type: integer
+        title:
+          type: string
+        location:
+          type: string
+        price:
+          type: number
+        area:
+          type: number
+        status:
+          type: string
+        is_verified:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ProjectCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        location:
+          type: string
+        capital_required:
+          type: number
+        minimum_investment:
+          type: number
+        roi_estimate:
+          type: number
+        timeline_months:
+          type: integer
+        verified_badge:
+          type: boolean
+
+    ProjectDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProjectCard'
+        - type: object
+          properties:
+            description:
+              type: string
+            city:
+              type: string
+
+    Deal:
+      type: object
+      properties:
+        id:
+          type: integer
+        buyer_user_id:
+          type: integer
+        seller_user_id:
+          type: integer
+        property_id:
+          type: integer
+        status:
+          type: string
+        transaction_value:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        referral_mappings:
+          type: array
+          items:
+            type: object
+            properties:
+              referral_partner_id:
+                type: integer
+              side:
+                type: string
+              commission_percentage:
+                type: number
+
+    ReferralPartner:
+      type: object
+      properties:
+        id:
+          type: integer
+        mobile_number:
+          type: string
+        full_name:
+          type: string
+        partner_type:
+          type: string
+        status:
+          type: string
+        commission_enabled:
+          type: boolean
+        total_commission_earned:
+          type: number
+
+    CommissionRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        deal_id:
+          type: integer
+        referral_partner_id:
+          type: integer
+        commission_type:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+        notification_type:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
