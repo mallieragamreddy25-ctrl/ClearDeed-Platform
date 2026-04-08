@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: cleardeed-postgres
+    environment:
+      POSTGRES_USER: cleardeed
+      POSTGRES_PASSWORD: cleardeed123
+      POSTGRES_DB: cleardeed_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/docs/DATABASE_SCHEMA.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - cleardeed-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cleardeed -d cleardeed_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # NestJS Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cleardeed-backend
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      CORS_ORIGIN: "*"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: cleardeed
+      DB_PASSWORD: cleardeed123
+      DB_NAME: cleardeed_db
+      JWT_SECRET: dev_jwt_secret_key_change_in_production
+      JWT_EXPIRES_IN: 24h
+      ADMIN_MOBILE_NUMBER: +919999999999
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cleardeed-network
+    volumes:
+      - ./backend/src:/app/src
+    restart: unless-stopped
+
+  # Flutter Web UI
+  flutter:
+    build:
+      context: ./frontend-flutter
+      dockerfile: Dockerfile
+    container_name: cleardeed-flutter
+    environment:
+      API_URL: http://backend:3000
+      FLUTTER_WEB_PORT: 5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - cleardeed-network
+    volumes:
+      - ./frontend-flutter/lib:/app/lib
+      - ./frontend-flutter/web:/app/web
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  cleardeed-network:
+    driver: bridge

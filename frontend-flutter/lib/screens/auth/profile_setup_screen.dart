@@ -216,7 +216,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 // Profile Type Dropdown
                 _buildDropdownField(
                   context,
-                  label: 'What's your profile type? *',
+                  label: "What's your profile type? *",
                   value: _selectedProfileType,
                   hint: 'Select one',
                   items: profileTypes,
@@ -579,7 +579,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       ],
     );
   }
-}
 
   static const List<String> budgetRanges = [
     'Below 25 Lac',
