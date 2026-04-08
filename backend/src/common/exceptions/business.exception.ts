@@ -65,12 +65,3 @@ export class UnauthorizedException extends BusinessException {
     super(message, HttpStatus.UNAUTHORIZED, 'UNAUTHORIZED');
   }
 }
-
-export class ResourceNotFoundException extends BusinessException {
-  constructor(resource: string, id?: string | number) {
-    const message = id
-      ? `${resource} with id ${id} not found`
-      : `${resource} not found`;
-    super(message, HttpStatus.NOT_FOUND, 'NOT_FOUND');
-  }
-}

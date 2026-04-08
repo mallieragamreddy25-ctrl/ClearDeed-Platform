@@ -26,6 +26,7 @@ import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import { PropertyFilterDto } from './dto/property-filter.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../../common/guards/admin.guard';
 
 /**
  * Properties Controller
@@ -87,10 +88,13 @@ export class PropertiesController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - JWT token invalid or missing' })
   async listProperties(
+    @Request() req: any,
     @Query('category') category?: string,
     @Query('city') city?: string,
     @Query('min_price') min_price?: string,
     @Query('max_price') max_price?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -99,8 +103,11 @@ export class PropertiesController {
       city,
       min_price: min_price ? parseFloat(min_price) : undefined,
       max_price: max_price ? parseFloat(max_price) : undefined,
+      status,
+      search,
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 20,
+      isAdmin: !!req.user?.isAdmin,
     });
   }
 
@@ -397,6 +404,7 @@ export class PropertiesController {
    * @returns Updated property with verified status
    */
   @Post(':id/verify')
+  @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Verify property (Admin)',
@@ -422,12 +430,11 @@ export class PropertiesController {
   @ApiResponse({ status: 404, description: 'Property not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async verifyProperty(
+    @Request() req: any,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { verification_notes: string },
   ) {
-    // In a real implementation, this would check for admin role
-    // For now, we'll assume the request comes from an admin
-    const adminId = 1; // This should come from req.user in production
+    const adminId = req.user.userId;
     return await this.propertiesService.verifyProperty(id, adminId, body.verification_notes);
   }
 
@@ -441,6 +448,7 @@ export class PropertiesController {
    * @returns Updated property with rejected status
    */
   @Post(':id/reject')
+  @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reject property verification (Admin)',

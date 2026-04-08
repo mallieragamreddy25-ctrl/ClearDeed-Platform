@@ -42,14 +42,17 @@ export class VerifyOtpDto {
  * User data returned in auth response
  */
 export class UserDataDto {
-  @ApiProperty({ example: 'user-123' })
-  id: string;
+  @ApiProperty({ example: 1 })
+  id: number;
 
   @ApiProperty({ example: '+919876543210' })
   mobile: string;
 
   @ApiProperty({ example: 'John Doe' })
   name?: string;
+
+  @ApiPropertyOptional({ example: true })
+  isAdmin?: boolean;
 }
 
 /**
@@ -125,9 +128,9 @@ export class ErrorResponseDto {
  * Used internally for JWT token creation
  */
 export class JwtPayloadDto {
-  sub: string; // User ID
-  email: string;
-  phone: string;
+  sub: number; // User ID
+  mobile: string;
+  isAdmin?: boolean;
   iat?: number;
   exp?: number;
 }

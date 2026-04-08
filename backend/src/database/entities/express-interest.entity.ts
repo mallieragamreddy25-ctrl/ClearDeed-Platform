@@ -34,10 +34,10 @@ import { Project } from './project.entity';
  * Note: Can express interest in either property OR project, not both required
  */
 @Entity('express_interests')
-@Index(['user_id'], { name: 'idx_interest_user' })
-@Index(['property_id'], { name: 'idx_interest_property' })
-@Index(['project_id'], { name: 'idx_interest_project' })
-@Index(['interested_at'], { name: 'idx_interest_date' })
+@Index('idx_interest_user', ['user_id'])
+@Index('idx_interest_property', ['property_id'])
+@Index('idx_interest_project', ['project_id'])
+@Index('idx_interest_date', ['interested_at'])
 @Unique('uk_user_property_interest', ['user_id', 'property_id'])
 @Unique('uk_user_project_interest', ['user_id', 'project_id'])
 export class ExpressInterest {

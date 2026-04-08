@@ -49,15 +49,9 @@ export const getDatabaseConfig = (): DataSourceOptions => {
     
     // Timeout settings
     connectTimeoutMS: 10000,
-    acquireTimeoutMS: 30000,
-    
     // Defaults
     dropSchema: false,
     migrationsRun: isProduction,
-    cli: {
-      migrationsDir: 'src/database/migrations',
-      entitiesDir: 'src/database/entities',
-    },
   };
 };
 

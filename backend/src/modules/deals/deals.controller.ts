@@ -97,6 +97,8 @@ export class DealsController {
         created_at: '2026-03-31T10:00:00Z',
         buyer_commission_percentage: 2,
         seller_commission_percentage: 2,
+        platform_commission_percentage: null,
+        referral_commission_percentage: null,
       },
     },
   })

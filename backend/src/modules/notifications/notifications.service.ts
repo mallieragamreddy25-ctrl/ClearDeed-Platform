@@ -9,9 +9,9 @@
  */
 
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import {
   Notification,
   NotificationPreferences,
@@ -198,7 +198,7 @@ export class NotificationsService {
     const title = replaceVariables(template.title, templateData);
 
     const notification = this.notificationsRepository.create({
-      id: uuidv4(),
+      id: randomUUID(),
       userId,
       type,
       channel,
@@ -451,7 +451,7 @@ export class NotificationsService {
 
     if (!preferences) {
       preferences = this.preferencesRepository.create({
-        id: uuidv4(),
+        id: randomUUID(),
         userId,
         emailNotifications: true,
         smsNotifications: true,
@@ -541,7 +541,7 @@ export class NotificationsService {
     reason?: string,
   ): Promise<void> {
     const log = this.auditLogRepository.create({
-      id: uuidv4(),
+      id: randomUUID(),
       notificationId: notification.id,
       userId: notification.userId,
       action,
@@ -559,7 +559,7 @@ export class NotificationsService {
    */
   async queueNotification(request: ISendNotificationRequest): Promise<NotificationQueueJob> {
     const job = this.queueJobRepository.create({
-      id: uuidv4(),
+      id: randomUUID(),
       userId: request.userId,
       type: request.type,
       channels: request.channels,

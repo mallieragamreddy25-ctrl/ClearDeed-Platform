@@ -5,6 +5,7 @@ import {
   Put,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   HttpCode,
@@ -27,7 +28,8 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { IUserProfile } from './user.interface';
+import { AdminGuard } from '../../common/guards/admin.guard';
+import { IUserListResponse, IUserProfile } from './user.interface';
 
 /**
  * Users Controller - Complete User Profile Management
@@ -65,6 +67,34 @@ import { IUserProfile } from './user.interface';
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'List platform users',
+    description: 'Admin-only user listing for deal creation, search, and reporting.',
+  })
+  @ApiOkResponse({
+    description: 'Users retrieved successfully',
+    type: Object,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or expired JWT token',
+  })
+  async listUsers(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('profile_type') profileType?: 'buyer' | 'seller' | 'investor',
+    @Query('search') search?: string,
+  ): Promise<IUserListResponse> {
+    return await this.usersService.getAllUsers({
+      limit: limit ? parseInt(limit, 10) : 20,
+      offset: offset ? parseInt(offset, 10) : 0,
+      profile_type: profileType,
+      search,
+    });
+  }
 
   /**
    * Get current user profile

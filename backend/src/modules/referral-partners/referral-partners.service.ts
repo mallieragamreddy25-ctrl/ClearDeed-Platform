@@ -4,6 +4,8 @@ import { Repository, FindOptionsWhere, ILike } from 'typeorm';
 import { ReferralPartner } from '../../database/entities/referral-partner.entity';
 import { CommissionLedger } from '../../database/entities/commission-ledger.entity';
 import { User } from '../../database/entities/user.entity';
+import { DealReferralMapping } from '../../database/entities/deal-referral-mapping.entity';
+import { Deal } from '../../database/entities/deal.entity';
 import { CreateReferralPartnerDto } from './dto/create-referral-partner.dto';
 import { UpdateReferralPartnerDto } from './dto/update-referral-partner.dto';
 import {
@@ -14,6 +16,7 @@ import {
   ICreateReferralPartnerResponse,
   IMobileVerificationResponse,
   IStatusTransitionResponse,
+  IReferralTrackingStatusResponse,
 } from './referral-partner.interface';
 
 /**
@@ -53,6 +56,10 @@ export class ReferralPartnersService {
     private commissionsRepository: Repository<CommissionLedger>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(DealReferralMapping)
+    private dealReferralMappingsRepository: Repository<DealReferralMapping>,
+    @InjectRepository(Deal)
+    private dealsRepository: Repository<Deal>,
   ) {}
 
   /**
@@ -291,6 +298,20 @@ export class ReferralPartnersService {
       payment_date: entry.payment_date,
       created_at: entry.created_at,
     }));
+
+    const trackingMappings = await this.dealReferralMappingsRepository.find({
+      where: { referral_partner_id: partnerId },
+      order: { created_at: 'DESC' },
+    });
+
+    detail.tracking_links = trackingMappings
+      .filter((mapping) => !!mapping.tracking_token)
+      .map((mapping) => ({
+        deal_id: mapping.deal_id,
+        side: mapping.side,
+        tracking_token: mapping.tracking_token,
+        tracking_path: `/v1/referral-partners/track/${mapping.tracking_token}`,
+      }));
 
     return detail;
   }
@@ -665,6 +686,46 @@ export class ReferralPartnersService {
             profile_type: user.profile_type,
           }
         : undefined,
+    };
+  }
+
+  async getTrackingStatusByToken(
+    trackingToken: string,
+  ): Promise<IReferralTrackingStatusResponse> {
+    const mapping = await this.dealReferralMappingsRepository.findOne({
+      where: { tracking_token: trackingToken },
+    });
+
+    if (!mapping) {
+      throw new NotFoundException('Tracking link not found');
+    }
+
+    const deal = await this.dealsRepository.findOne({
+      where: { id: mapping.deal_id },
+    });
+
+    if (!deal) {
+      throw new NotFoundException('Tracked deal not found');
+    }
+
+    const referralCommission = await this.commissionsRepository.findOne({
+      where: {
+        deal_id: deal.id,
+        referral_partner_id: mapping.referral_partner_id,
+        commission_type: 'referral_fee',
+      },
+      order: { created_at: 'DESC' },
+    });
+
+    return {
+      deal_id: deal.id,
+      tracking_token: mapping.tracking_token,
+      referred_side: mapping.side,
+      deal_status: deal.status,
+      payment_status: deal.payment_status,
+      asset_type: deal.project_id ? 'project' : 'property',
+      commission_status: referralCommission?.status ?? 'not_recorded',
+      last_updated_at: deal.updated_at ?? deal.created_at,
     };
   }
 

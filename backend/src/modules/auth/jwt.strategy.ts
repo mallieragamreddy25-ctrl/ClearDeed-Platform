@@ -11,8 +11,9 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 interface JwtPayload {
-  sub: string; // user ID
+  sub: number;
   mobile: string;
+  isAdmin?: boolean;
   iat: number;
   exp: number;
 }
@@ -32,12 +33,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * This method is called automatically by Passport
    * The validated result is attached to request.user
    */
-  validate(payload: JwtPayload): JwtPayload {
+  validate(payload: JwtPayload): {
+    userId: number;
+    sub: number;
+    mobile: string;
+    isAdmin: boolean;
+  } {
     if (!payload.sub || !payload.mobile) {
       throw new UnauthorizedException('Invalid token payload');
     }
 
-    return payload;
+    return {
+      userId: payload.sub,
+      sub: payload.sub,
+      mobile: payload.mobile,
+      isAdmin: Boolean(payload.isAdmin),
+    };
   }
 }
 

@@ -44,6 +44,9 @@ export class DealReferralMapping {
   @Column({ type: 'decimal', precision: 5, scale: 2 })
   commission_percentage: number;
 
+  @Column({ type: 'varchar', length: 120, nullable: true, unique: true })
+  tracking_token: string;
+
   @Column({ type: 'timestamp', nullable: true })
   commission_locked_at: Date;
 

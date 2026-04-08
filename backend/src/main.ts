@@ -20,6 +20,9 @@ import * as dotenv from 'dotenv';
  */
 async function bootstrap() {
   // Load environment variables
+  dotenv.config({
+    path: `.env.${process.env.NODE_ENV || 'development'}`,
+  });
   dotenv.config();
 
   const app = await NestFactory.create(AppModule);

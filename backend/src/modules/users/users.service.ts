@@ -1,18 +1,19 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../../database/entities/user.entity';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { User } from "../../database/entities/user.entity";
+import { ReferralPartner } from "../../database/entities/referral-partner.entity";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
 import {
   InvalidReferralException,
   ResourceNotFoundException,
-} from '../../common/exceptions/business.exception';
+} from "../../common/exceptions/business.exception";
 import {
   IUserProfile,
   IUserListResponse,
   IDeactivateResponse,
-} from './user.interface';
+} from "./user.interface";
 
 /**
  * Users Service - Complete User Profile Management
@@ -46,6 +47,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(ReferralPartner)
+    private referralPartnersRepository: Repository<ReferralPartner>,
   ) {}
 
   /**
@@ -94,7 +97,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new ResourceNotFoundException('User', userId);
+      throw new ResourceNotFoundException("User", userId);
     }
 
     // Check email uniqueness before updating
@@ -103,22 +106,26 @@ export class UsersService {
         where: { email: createUserDto.email },
       });
       if (existingEmail && existingEmail.id !== userId) {
-        throw new BadRequestException('Email already in use');
+        throw new BadRequestException("Email already in use");
       }
     }
 
     // Validate and set referral number if provided
     if (createUserDto.referral_mobile_number) {
-      const isValidReferral = await this.validateReferral(
+      const normalizedReferralMobile = this.normalizeMobileNumber(
         createUserDto.referral_mobile_number,
+      );
+      const isValidReferral = await this.validateReferral(
+        normalizedReferralMobile,
         userId,
       );
       if (!isValidReferral) {
         throw new InvalidReferralException(
-          'Referral mobile number is not eligible',
+          "Referral mobile number must belong to an approved, active referral partner",
         );
       }
-      user.referral_mobile_number = createUserDto.referral_mobile_number;
+      user.referral_mobile_number = normalizedReferralMobile;
+      user.referred_by_mobile = normalizedReferralMobile;
       user.referral_validated = true;
     }
 
@@ -167,7 +174,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new ResourceNotFoundException('User', userId);
+      throw new ResourceNotFoundException("User", userId);
     }
 
     return this.stripSensitiveFields(user);
@@ -211,7 +218,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new ResourceNotFoundException('User', userId);
+      throw new ResourceNotFoundException("User", userId);
     }
 
     // Update full_name if provided
@@ -225,7 +232,7 @@ export class UsersService {
         where: { email: updateUserDto.email },
       });
       if (existingUser && existingUser.id !== userId) {
-        throw new BadRequestException('Email already in use');
+        throw new BadRequestException("Email already in use");
       }
       user.email = updateUserDto.email;
     }
@@ -269,18 +276,43 @@ export class UsersService {
    * @returns Paginated response with user array, total count, limit, offset
    */
   async getAllUsers(
-    limit: number = 20,
-    offset: number = 0,
+    options: {
+      limit?: number;
+      offset?: number;
+      profile_type?: 'buyer' | 'seller' | 'investor';
+      search?: string;
+    } = {},
   ): Promise<IUserListResponse> {
-    const [users, total] = await this.usersRepository.findAndCount({
-      where: { is_active: true },
-      take: limit,
-      skip: offset,
-      order: { created_at: 'DESC' },
-    });
+    const limit = options.limit ?? 20;
+    const offset = options.offset ?? 0;
+
+    const query = this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.is_active = :isActive', { isActive: true });
+
+    if (options.profile_type) {
+      query.andWhere('user.profile_type = :profileType', {
+        profileType: options.profile_type,
+      });
+    }
+
+    if (options.search) {
+      query.andWhere(
+        '(user.full_name ILIKE :search OR user.mobile_number ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${options.search}%` },
+      );
+    }
+
+    const [users, total] = await query
+      .orderBy('user.created_at', 'DESC')
+      .take(limit)
+      .skip(offset)
+      .getManyAndCount();
 
     return {
-      data: users.map((user) => this.stripSensitiveFields(user)) as IUserProfile[],
+      data: users.map((user) =>
+        this.stripSensitiveFields(user),
+      ) as IUserProfile[],
       total,
       limit,
       offset,
@@ -357,22 +389,9 @@ export class UsersService {
       return false;
     }
 
-    // Step 2: Find referral user
-    const referralUser = await this.usersRepository.findOne({
-      where: { mobile_number: referralMobileNumber },
-    });
-
-    // Step 3: Verify user exists
-    if (!referralUser) {
-      return false;
-    }
-
-    // Step 4: Verify user is verified and active
-    if (!referralUser.is_verified || !referralUser.is_active) {
-      return false;
-    }
-
-    return true;
+    return this.isApprovedActiveReferralPartner(
+      this.normalizeMobileNumber(referralMobileNumber),
+    );
   }
 
   /**
@@ -405,27 +424,55 @@ export class UsersService {
       return false;
     }
 
-    // Step 2: Find referral user
-    const referralUser = await this.usersRepository.findOne({
-      where: { mobile_number: referralMobileNumber },
+    const currentUser = await this.usersRepository.findOne({
+      where: { id: currentUserId },
     });
 
-    // Step 3: Verify user exists
-    if (!referralUser) {
+    if (!currentUser) {
       return false;
     }
 
-    // Step 4: Check self-referral
-    if (referralUser.id === currentUserId) {
+    const normalizedReferralMobile =
+      this.normalizeMobileNumber(referralMobileNumber);
+
+    // Step 2: Check self-referral
+    if (
+      this.normalizeMobileNumber(currentUser.mobile_number) ===
+      normalizedReferralMobile
+    ) {
       return false;
     }
 
-    // Step 5: Verify user is verified and active
-    if (!referralUser.is_verified || !referralUser.is_active) {
-      return false;
+    // Step 3: Referral must belong to an approved, active partner
+    return this.isApprovedActiveReferralPartner(normalizedReferralMobile);
+  }
+
+  private normalizeMobileNumber(mobile: string): string {
+    let normalized = mobile.replace(/\D/g, "");
+
+    if (normalized.startsWith("91") && normalized.length > 10) {
+      normalized = normalized.slice(2);
     }
 
-    return true;
+    if (normalized.startsWith("0") && normalized.length > 10) {
+      normalized = normalized.slice(1);
+    }
+
+    return normalized.slice(-10);
+  }
+
+  private async isApprovedActiveReferralPartner(
+    normalizedMobileNumber: string,
+  ): Promise<boolean> {
+    const partner = await this.referralPartnersRepository.findOne({
+      where: {
+        mobile_number: normalizedMobileNumber,
+        status: "approved",
+        is_active: true,
+      },
+    });
+
+    return !!partner;
   }
 
   /**
@@ -456,7 +503,7 @@ export class UsersService {
     // Regex: Optional +91 or 0, then 1 digit (6-9), then 9 more digits
     const mobileRegex = /^(\+91|0)?[6-9]\d{9}$/;
     // Remove spaces before testing
-    return mobileRegex.test(mobile.replace(/\s+/g, ''));
+    return mobileRegex.test(mobile.replace(/\s+/g, ""));
   }
 
   /**
@@ -485,14 +532,14 @@ export class UsersService {
    */
   async selectProfileType(
     userId: number,
-    profileType: 'buyer' | 'seller' | 'investor',
+    profileType: "buyer" | "seller" | "investor",
   ): Promise<Partial<IUserProfile>> {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
     });
 
     if (!user) {
-      throw new ResourceNotFoundException('User', userId);
+      throw new ResourceNotFoundException("User", userId);
     }
 
     user.profile_type = profileType;
@@ -528,7 +575,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new ResourceNotFoundException('User', userId);
+      throw new ResourceNotFoundException("User", userId);
     }
 
     // Set is_active to false (soft deletion)
@@ -537,7 +584,7 @@ export class UsersService {
 
     return {
       success: true,
-      message: 'Account deactivated successfully',
+      message: "Account deactivated successfully",
     };
   }
 

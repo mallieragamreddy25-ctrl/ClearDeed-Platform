@@ -411,7 +411,7 @@ export class AdminService {
     adminUserId: number,
     actionType: string,
     relatedEntityType: string,
-    relatedEntityId?: number,
+    relatedEntityId?: number | null,
     actionDetails?: Record<string, any>,
     ipAddress?: string,
   ): Promise<IAdminActivityLog> {
@@ -419,7 +419,7 @@ export class AdminService {
       admin_user_id: adminUserId,
       action_type: actionType,
       related_entity_type: relatedEntityType,
-      related_entity_id: relatedEntityId,
+      related_entity_id: relatedEntityId ?? undefined,
       action_details: actionDetails || {},
       ip_address: ipAddress,
     });

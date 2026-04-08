@@ -16,6 +16,9 @@ import { Notification } from './entities/notification.entity';
 import { AdminActivityLog } from './entities/admin-activity-log.entity';
 import { AdminUser } from './entities/admin-user.entity';
 
+dotenv.config({
+  path: `.env.${process.env.NODE_ENV || 'development'}`,
+});
 dotenv.config();
 
 /**

@@ -102,7 +102,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Missing or invalid JWT token' })
   async logout(@Request() req: any): Promise<{ message: string }> {
-    const userId = req.user.sub;
+    const userId = req.user.userId;
     return this.authService.logout(userId);
   }
 }

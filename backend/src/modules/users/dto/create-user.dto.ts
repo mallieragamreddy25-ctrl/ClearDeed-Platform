@@ -7,8 +7,8 @@ import {
   MaxLength,
   IsNotEmpty,
   Matches,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 /**
  * CreateUserDto - User Profile Creation Request
@@ -48,15 +48,15 @@ export class CreateUserDto {
    * @example "John Doe"
    */
   @ApiProperty({
-    description: 'User full name (3-255 characters)',
-    example: 'John Doe',
+    description: "User full name (3-255 characters)",
+    example: "John Doe",
     minLength: 3,
     maxLength: 255,
   })
-  @IsNotEmpty({ message: 'Full name is required' })
-  @IsString({ message: 'Full name must be a string' })
-  @MinLength(3, { message: 'Full name must be at least 3 characters long' })
-  @MaxLength(255, { message: 'Full name must not exceed 255 characters' })
+  @IsNotEmpty({ message: "Full name is required" })
+  @IsString({ message: "Full name must be a string" })
+  @MinLength(3, { message: "Full name must be at least 3 characters long" })
+  @MaxLength(255, { message: "Full name must not exceed 255 characters" })
   full_name: string;
 
   /**
@@ -76,11 +76,11 @@ export class CreateUserDto {
    * @example "john.doe@example.com"
    */
   @ApiProperty({
-    description: 'User email address (must be unique)',
-    example: 'john.doe@example.com',
+    description: "User email address (must be unique)",
+    example: "john.doe@example.com",
   })
-  @IsNotEmpty({ message: 'Email is required' })
-  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsNotEmpty({ message: "Email is required" })
+  @IsEmail({}, { message: "Email must be a valid email address" })
   email: string;
 
   /**
@@ -99,11 +99,11 @@ export class CreateUserDto {
    * @example "Mumbai"
    */
   @ApiProperty({
-    description: 'User city/location',
-    example: 'Mumbai',
+    description: "User city/location",
+    example: "Mumbai",
   })
-  @IsNotEmpty({ message: 'City is required' })
-  @IsString({ message: 'City must be a string' })
+  @IsNotEmpty({ message: "City is required" })
+  @IsString({ message: "City must be a string" })
   city: string;
 
   /**
@@ -120,15 +120,15 @@ export class CreateUserDto {
    * @example "buyer"
    */
   @ApiProperty({
-    description: 'User profile type/role',
-    enum: ['buyer', 'seller', 'investor'],
-    example: 'buyer',
+    description: "User profile type/role",
+    enum: ["buyer", "seller", "investor"],
+    example: "buyer",
   })
-  @IsNotEmpty({ message: 'Profile type is required' })
-  @IsEnum(['buyer', 'seller', 'investor'], {
-    message: 'Profile type must be one of: buyer, seller, investor',
+  @IsNotEmpty({ message: "Profile type is required" })
+  @IsEnum(["buyer", "seller", "investor"], {
+    message: "Profile type must be one of: buyer, seller, investor",
   })
-  profile_type: 'buyer' | 'seller' | 'investor';
+  profile_type: "buyer" | "seller" | "investor";
 
   /**
    * Budget range (for buyer profiles)
@@ -148,11 +148,11 @@ export class CreateUserDto {
    * @example "50-100 Lakhs"
    */
   @ApiPropertyOptional({
-    description: 'Budget range for buyer profile',
-    example: '50-100 Lakhs',
+    description: "Budget range for buyer profile",
+    example: "50-100 Lakhs",
   })
   @IsOptional()
-  @IsString({ message: 'Budget range must be a string' })
+  @IsString({ message: "Budget range must be a string" })
   budget_range?: string;
 
   /**
@@ -172,11 +172,11 @@ export class CreateUserDto {
    * @example "1-5 Crores"
    */
   @ApiPropertyOptional({
-    description: 'Net worth range for investor profile',
-    example: '1-5 Crores',
+    description: "Net worth range for investor profile",
+    example: "1-5 Crores",
   })
   @IsOptional()
-  @IsString({ message: 'Net worth range must be a string' })
+  @IsString({ message: "Net worth range must be a string" })
   net_worth_range?: string;
 
   /**
@@ -187,8 +187,8 @@ export class CreateUserDto {
    *
    * Validation Rules:
    * - Must be valid Indian mobile number
-   * - Referral user must exist in system
-   * - Referral user must be verified and active
+   * - Referral partner must exist in system
+   * - Referral partner must be approved and active
    * - Cannot refer yourself
    * - If all criteria met, referral_validated = true
    *
@@ -205,10 +205,10 @@ export class CreateUserDto {
    * @example "9876543210"
    */
   @ApiPropertyOptional({
-    description: 'Referral mobile number (Indian format)',
-    example: '9876543210',
+    description: "Referral mobile number (Indian format)",
+    example: "9876543210",
   })
   @IsOptional()
-  @IsString({ message: 'Referral mobile number must be a string' })
+  @IsString({ message: "Referral mobile number must be a string" })
   referral_mobile_number?: string;
 }

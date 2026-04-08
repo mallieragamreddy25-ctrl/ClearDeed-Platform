@@ -197,8 +197,11 @@ export class PropertiesService {
     city?: string;
     min_price?: number;
     max_price?: number;
+    status?: string;
+    search?: string;
     page?: number;
     limit?: number;
+    isAdmin?: boolean;
   }): Promise<{
     data: Property[];
     total: number;
@@ -207,8 +210,30 @@ export class PropertiesService {
   }> {
     let query = this.propertiesRepository
       .createQueryBuilder('property')
-      .where('property.status = :status', { status: 'verified' })
-      .orWhere('property.status = :liveStatus', { liveStatus: 'live' });
+      .leftJoinAndSelect('property.seller_user', 'seller_user')
+      .leftJoinAndSelect('property.documents', 'documents');
+
+    if (filters.isAdmin) {
+      if (filters.status) {
+        query = query.where('property.status = :status', {
+          status: filters.status,
+        });
+      }
+    } else {
+      query = query.where(
+        '(property.status = :verifiedStatus OR property.status = :liveStatus)',
+        {
+          verifiedStatus: 'verified',
+          liveStatus: 'live',
+        },
+      );
+
+      if (filters.status) {
+        query = query.andWhere('property.status = :status', {
+          status: filters.status,
+        });
+      }
+    }
 
     if (filters.category) {
       query = query.andWhere('property.category = :category', { category: filters.category });
@@ -224,6 +249,13 @@ export class PropertiesService {
 
     if (filters.max_price) {
       query = query.andWhere('property.price <= :max_price', { max_price: filters.max_price });
+    }
+
+    if (filters.search) {
+      query = query.andWhere(
+        '(property.title ILIKE :search OR property.description ILIKE :search OR property.location ILIKE :search)',
+        { search: `%${filters.search}%` },
+      );
     }
 
     const page = filters.page || 1;

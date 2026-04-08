@@ -3,9 +3,27 @@
  * Reusable mock data and test utilities for Jest tests
  */
 
-import { CreateUserDto } from '../modules/users/dto/create-user.dto';
-import { CreatePropertyDto } from '../modules/properties/dto/create-property.dto';
-import { CreateDealDto } from '../modules/deals/dto/create-deal.dto';
+import { CreateUserDto } from '../../modules/users/dto/create-user.dto';
+import { CreatePropertyDto } from '../../modules/properties/dto/create-property.dto';
+import { CreateDealDto } from '../../modules/deals/dto/create-deal.dto';
+
+type MockFn<TArgs extends any[] = any[], TResult = any> = ((
+  ...args: TArgs
+) => TResult) & {
+  calls: TArgs[];
+};
+
+const createMockFn = <TArgs extends any[] = any[], TResult = any>(
+  returnValue?: TResult,
+): MockFn<TArgs, TResult> => {
+  const fn = ((...args: TArgs) => {
+    fn.calls.push(args);
+    return returnValue as TResult;
+  }) as MockFn<TArgs, TResult>;
+
+  fn.calls = [];
+  return fn;
+};
 
 /**
  * Mock user data for testing
@@ -221,11 +239,10 @@ export const mockNotifications = {
  * Generate Auth DTO for testing
  */
 export const createUserDto = (): CreateUserDto => ({
-  mobileNumber: '+919999999999',
-  fullName: 'Test User',
+  full_name: 'Test User',
   email: 'test@example.com',
   city: 'Mumbai',
-  profileType: 'buyer',
+  profile_type: 'buyer',
 });
 
 /**
@@ -239,17 +256,18 @@ export const createPropertyDto = (): CreatePropertyDto => ({
   city: 'Test City',
   price: 1000000,
   area: 1000,
-  areaUnit: 'sqft',
+  area_unit: 'sqft',
+  ownership_type: 'freehold',
 });
 
 /**
  * Generate Deal DTO for testing
  */
 export const createDealDto = (): CreateDealDto => ({
-  buyerUserId: mockUsers.buyer.id,
-  sellerUserId: mockUsers.seller.id,
-  propertyId: mockProperties.land.id,
-  transactionValue: 50000000,
+  buyer_user_id: mockUsers.buyer.id,
+  seller_user_id: mockUsers.seller.id,
+  property_id: mockProperties.land.id,
+  transaction_value: 50000000,
 });
 
 /**
@@ -376,10 +394,10 @@ export class TestFixtures {
    */
   static createMockResponse() {
     return {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-      send: jest.fn().mockReturnThis(),
-      setHeader: jest.fn().mockReturnThis(),
+      status: createMockFn(),
+      json: createMockFn(),
+      send: createMockFn(),
+      setHeader: createMockFn(),
     };
   }
 }

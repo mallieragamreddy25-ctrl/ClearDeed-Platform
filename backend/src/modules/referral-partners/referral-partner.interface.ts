@@ -25,6 +25,7 @@ export interface IReferralPartnerDetail {
   total_commission_earned: number;
   yearly_maintenance_fee_status: string;
   maintenance_fee_renewal_date?: Date;
+  tracking_links?: IReferralTrackingLink[];
   created_at: Date;
   updated_at: Date;
 }
@@ -138,4 +139,22 @@ export interface IMobileVerificationResponse {
     full_name: string;
     profile_type: string;
   };
+}
+
+export interface IReferralTrackingLink {
+  deal_id: number;
+  side: 'buyer' | 'seller';
+  tracking_token: string;
+  tracking_path: string;
+}
+
+export interface IReferralTrackingStatusResponse {
+  deal_id: number;
+  tracking_token: string;
+  referred_side: 'buyer' | 'seller';
+  deal_status: 'open' | 'closed';
+  payment_status: 'pending' | 'completed';
+  asset_type: 'property' | 'project';
+  commission_status: 'not_recorded' | 'pending' | 'approved' | 'paid';
+  last_updated_at: Date;
 }

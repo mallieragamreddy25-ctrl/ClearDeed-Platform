@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersService } from './users.service';
-import { UsersController } from './users.controller';
-import { UserRepository } from './user.repository';
-import { User } from '../../database/entities/user.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { UsersService } from "./users.service";
+import { UsersController } from "./users.controller";
+import { UserRepository } from "./user.repository";
+import { User } from "../../database/entities/user.entity";
+import { ReferralPartner } from "../../database/entities/referral-partner.entity";
 
 /**
  * Users Module - Core User Management
@@ -51,7 +52,7 @@ import { User } from '../../database/entities/user.entity';
  * ```
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([User])],
+  imports: [TypeOrmModule.forFeature([User, ReferralPartner])],
   controllers: [UsersController],
   providers: [UsersService, UserRepository],
   exports: [UsersService, UserRepository],

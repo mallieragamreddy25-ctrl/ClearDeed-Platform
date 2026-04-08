@@ -27,8 +27,8 @@ import { Property } from './property.entity';
  * - CASCADE delete: Documents deleted when property deleted
  */
 @Entity('property_documents')
-@Index(['property_id'], { name: 'idx_doc_property' })
-@Index(['doc_type'], { name: 'idx_doc_type' })
+@Index('idx_doc_property', ['property_id'])
+@Index('idx_doc_type', ['doc_type'])
 export class PropertyDocument {
   /**
    * Unique document identifier

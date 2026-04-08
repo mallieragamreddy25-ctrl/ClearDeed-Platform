@@ -7,10 +7,12 @@ import {
   Index,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Property } from './property.entity';
 import { Project } from './project.entity';
+import { DealReferralMapping } from './deal-referral-mapping.entity';
 
 /**
  * Deal Entity
@@ -83,8 +85,23 @@ export class Deal {
   @Column({ nullable: true })
   referral_partner_id: number;
 
+  @OneToMany(() => DealReferralMapping, (mapping) => mapping.deal)
+  referral_mappings: DealReferralMapping[];
+
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
   transaction_value: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, default: 2 })
+  buyer_commission_percentage: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, default: 2 })
+  seller_commission_percentage: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  platform_commission_percentage: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  referral_commission_percentage: number;
 
   @Column({
     type: 'enum',

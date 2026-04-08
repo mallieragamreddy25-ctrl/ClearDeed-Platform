@@ -36,7 +36,10 @@ import { APP_FILTER } from '@nestjs/core';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: [
+        `.env.${process.env.NODE_ENV || 'development'}`,
+        '.env',
+      ],
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',

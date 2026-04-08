@@ -29,6 +29,8 @@ export interface IDeal {
   property_id?: number;
   project_id?: number;
   referral_partner_id?: number;
+  buyer_referral_partner_id?: number;
+  seller_referral_partner_id?: number;
   created_by_admin_id?: number;
   transaction_value: number;
   status: DealStatus;
@@ -36,6 +38,10 @@ export interface IDeal {
   payment_date?: Date;
   commission_locked_at?: Date;
   deal_closed_at?: Date;
+  buyer_commission_percentage?: number;
+  seller_commission_percentage?: number;
+  platform_commission_percentage?: number;
+  referral_commission_percentage?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -84,8 +90,12 @@ export interface ICreateDealRequest {
   project_id?: number;
   transaction_value: number;
   referral_partner_id?: number;
+  buyer_referral_partner_id?: number;
+  seller_referral_partner_id?: number;
   buyer_commission_percentage?: number;
   seller_commission_percentage?: number;
+  platform_commission_percentage?: number;
+  referral_commission_percentage?: number;
 }
 
 /**
@@ -155,12 +165,16 @@ export interface ICreateDealResponse {
   property_id?: number;
   project_id?: number;
   referral_partner_id?: number;
+  buyer_referral_partner_id?: number;
+  seller_referral_partner_id?: number;
   transaction_value: number;
   status: DealStatus;
   payment_status: PaymentStatus;
   commission_locked_at?: Date;
   buyer_commission_percentage: number;
   seller_commission_percentage: number;
+  platform_commission_percentage?: number;
+  referral_commission_percentage?: number;
   created_at: Date;
 }
 

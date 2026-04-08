@@ -32,8 +32,8 @@ import { Property } from './property.entity';
  * - Seller can update order for better presentation
  */
 @Entity('property_gallery')
-@Index(['property_id'], { name: 'idx_gallery_property' })
-@Index(['display_order'], { name: 'idx_gallery_order' })
+@Index('idx_gallery_property', ['property_id'])
+@Index('idx_gallery_order', ['display_order'])
 export class PropertyGallery {
   /**
    * Unique gallery image identifier

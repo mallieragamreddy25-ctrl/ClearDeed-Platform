@@ -75,6 +75,7 @@ export class CommissionLedgerRepository {
     let query = this.commissionRepository
       .createQueryBuilder('cl')
       .leftJoinAndSelect('cl.deal', 'deal')
+      .leftJoinAndSelect('cl.referral_partner', 'referral_partner')
       .leftJoinAndSelect('deal.buyer_user', 'buyer')
       .leftJoinAndSelect('deal.seller_user', 'seller');
 

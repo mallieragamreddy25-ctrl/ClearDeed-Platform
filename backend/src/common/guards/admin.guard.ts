@@ -30,19 +30,43 @@ export class AdminGuard implements CanActivate {
       throw new ForbiddenException('No authenticated user found');
     }
 
-    // Check if user is admin
+    if (user.isAdmin) {
+      return true;
+    }
+
     if (this.ADMIN_IDS.has(user.userId)) {
       return true;
     }
 
-    // Could extend with database query:
-    // const dbUser = await this.usersRepository.findOne({
-    //   where: { id: user.userId },
-    // });
-    // if (dbUser?.is_admin) {
-    //   return true;
-    // }
+    const dbUser = await this.usersRepository.findOne({
+      where: { id: user.userId },
+    });
+
+    if (dbUser?.mobile_number) {
+      const configuredMobile = process.env.ADMIN_MOBILE_NUMBER;
+      if (
+        configuredMobile &&
+        this.normalizeMobileNumber(configuredMobile) ===
+          this.normalizeMobileNumber(dbUser.mobile_number)
+      ) {
+        return true;
+      }
+    }
 
     throw new ForbiddenException('Only administrators can access this endpoint');
+  }
+
+  private normalizeMobileNumber(mobile: string): string {
+    let normalized = mobile.replace(/\D/g, '');
+
+    if (normalized.startsWith('91') && normalized.length > 10) {
+      normalized = normalized.slice(2);
+    }
+
+    if (normalized.startsWith('0')) {
+      normalized = normalized.slice(1);
+    }
+
+    return normalized.slice(-10);
   }
 }

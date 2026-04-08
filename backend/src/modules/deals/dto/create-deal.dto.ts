@@ -2,9 +2,8 @@ import {
   IsNumber,
   IsOptional,
   Min,
+  Max,
   IsNotEmpty,
-  IsDecimal,
-  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -68,13 +67,31 @@ export class CreateDealDto {
   transaction_value: number;
 
   @ApiPropertyOptional({
-    description: 'Referral partner ID for this deal',
+    description: 'Legacy single referral partner ID. Prefer buyer_referral_partner_id.',
     type: Number,
     example: 5,
   })
   @IsNumber()
   @IsOptional()
   referral_partner_id?: number;
+
+  @ApiPropertyOptional({
+    description: 'Buyer-side referral partner ID for this deal',
+    type: Number,
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  buyer_referral_partner_id?: number;
+
+  @ApiPropertyOptional({
+    description: 'Seller-side referral partner ID for this deal',
+    type: Number,
+    example: 8,
+  })
+  @IsNumber()
+  @IsOptional()
+  seller_referral_partner_id?: number;
 
   @ApiPropertyOptional({
     description: 'Custom buyer commission percentage (locked at deal creation)',
@@ -97,6 +114,30 @@ export class CreateDealDto {
   @IsNumber()
   @Min(0, { message: 'Seller commission percentage must be greater than or equal to 0' })
   seller_commission_percentage?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Platform commission percentage for investment/project deals only (must be between 2 and 10)',
+    type: Number,
+    example: 5,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(2, { message: 'Platform commission percentage must be at least 2' })
+  @Max(10, { message: 'Platform commission percentage must not exceed 10' })
+  platform_commission_percentage?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Referral commission percentage for investment/project deals only (must be between 1 and 2 when referral partner exists)',
+    type: Number,
+    example: 1.5,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1, { message: 'Referral commission percentage must be at least 1' })
+  @Max(2, { message: 'Referral commission percentage must not exceed 2' })
+  referral_commission_percentage?: number;
 
   /**
    * Validation: Either property_id or project_id must be provided

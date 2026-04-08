@@ -38,6 +38,7 @@ import {
   IStatusTransitionResponse,
   ICommissionSummary,
   IMobileVerificationResponse,
+  IReferralTrackingStatusResponse,
 } from './referral-partner.interface';
 
 /**
@@ -767,5 +768,45 @@ export class ReferralPartnersController {
     @Query('mobile') mobile: string,
   ): Promise<IMobileVerificationResponse> {
     return this.referralPartnersService.verifyMobileNumber(mobile);
+  }
+
+  /**
+   * Public secure tracking endpoint for referral partners.
+   *
+   * Returns only non-sensitive deal progress and commission status.
+   */
+  @Get('/track/:token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get secure referral tracking status',
+    description:
+      'Public tokenized endpoint that exposes only deal progress and referral commission status without buyer, seller, property, or financial details',
+  })
+  @ApiParam({
+    name: 'token',
+    type: String,
+    description: 'Secure referral tracking token',
+    example: '7fc99cc2-bc2a-4f99-8b70-03f6c70a9922',
+  })
+  @ApiOkResponse({
+    description: 'Tracking status retrieved successfully',
+    schema: {
+      example: {
+        deal_id: 10,
+        tracking_token: '7fc99cc2-bc2a-4f99-8b70-03f6c70a9922',
+        referred_side: 'buyer',
+        deal_status: 'open',
+        payment_status: 'pending',
+        asset_type: 'project',
+        commission_status: 'not_recorded',
+        last_updated_at: '2026-04-08T10:30:00Z',
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Tracking link not found' })
+  async getSecureTrackingStatus(
+    @Param('token') token: string,
+  ): Promise<IReferralTrackingStatusResponse> {
+    return this.referralPartnersService.getTrackingStatusByToken(token);
   }
 }

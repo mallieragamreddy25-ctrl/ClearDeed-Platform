@@ -37,12 +37,12 @@ import { ExpressInterest } from './express-interest.entity';
  * - Once 'live', buyer can express interest
  */
 @Entity('properties')
-@Index(['seller_user_id'], { name: 'idx_property_seller' })
-@Index(['status'], { name: 'idx_property_status' })
-@Index(['city'], { name: 'idx_property_city' })
-@Index(['category'], { name: 'idx_property_category' })
-@Index(['is_verified'], { name: 'idx_property_verified' })
-@Index(['created_at'], { name: 'idx_property_created' })
+@Index('idx_property_seller', ['seller_user_id'])
+@Index('idx_property_status', ['status'])
+@Index('idx_property_city', ['city'])
+@Index('idx_property_category', ['category'])
+@Index('idx_property_verified', ['is_verified'])
+@Index('idx_property_created', ['created_at'])
 export class Property {
   /**
    * Unique property identifier

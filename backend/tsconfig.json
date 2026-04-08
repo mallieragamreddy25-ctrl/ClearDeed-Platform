@@ -21,13 +21,6 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "ts-node": {
-    "esm": true,
-    "experimentalEsm": true,
-    "compilerOptions": {
-      "module": "esnext"
-    }
-  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

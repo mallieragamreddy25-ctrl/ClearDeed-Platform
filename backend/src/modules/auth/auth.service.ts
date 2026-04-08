@@ -1,63 +1,46 @@
 /**
  * Auth Service - Core authentication business logic
- * 
+ *
  * Handles:
  * - OTP generation and sending
  * - OTP verification and user authentication
  * - JWT token creation and validation
- * - User registration and management (in-memory for now)
+ * - Database-backed user registration and management
  * - Logout functionality
  */
 
 import {
   Injectable,
-  BadRequestException,
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { v4 as uuidv4 } from 'uuid';
+import { Repository } from 'typeorm';
 import { OtpService } from './otp.service';
 import { SendOtpDto, VerifyOtpDto, AuthResponseDto, UserDataDto } from './auth.dto';
-import { OTP_EXPIRY, JWT_EXPIRY } from './constants';
-
-interface User {
-  id: string;
-  mobile: string;
-  name?: string;
-  createdAt: Date;
-}
+import { OTP_EXPIRY } from './constants';
+import { User } from '../../database/entities/user.entity';
 
 @Injectable()
 export class AuthService {
-  private userStore: Map<string, User> = new Map();
-  private sessionStore: Set<string> = new Set();
-
   constructor(
     private readonly otpService: OtpService,
     private readonly jwtService: JwtService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
-  /**
-   * Send OTP to mobile number
-   * Generates 6-digit OTP, stores with 10-min expiry, enforces 5-attempt rate limit
-   * 
-   * @param sendOtpDto - Contains mobile number
-   * @returns Object with message and expiresIn
-   * @throws RateLimitExceededException if 5+ attempts in 10 minutes
-   */
   async sendOtp(sendOtpDto: SendOtpDto): Promise<{ message: string; expiresIn: number }> {
-    const { mobile } = sendOtpDto;
+    const normalizedMobile = this.normalizeMobileNumber(sendOtpDto.mobile);
 
     try {
-      // Check rate limit
-      this.otpService.rateLimitCheck(mobile);
+      this.otpService.rateLimitCheck(normalizedMobile);
 
-      // Generate OTP
       const otp = this.otpService.generateOtp();
-      this.otpService.storeOtp(mobile, otp, OTP_EXPIRY);
+      this.otpService.storeOtp(normalizedMobile, otp, OTP_EXPIRY);
 
-      console.log(`[AUTH] OTP sent to ${mobile}: ${otp}`);
+      console.log(`[AUTH] OTP sent to ${normalizedMobile}: ${otp}`);
 
       return {
         message: 'OTP sent successfully',
@@ -71,47 +54,47 @@ export class AuthService {
     }
   }
 
-  /**
-   * Verify OTP and create JWT token
-   * Validates OTP, creates user if new, returns JWT token and user object
-   * 
-   * @param verifyOtpDto - Contains mobile and otp
-   * @returns Object with access_token and user object
-   * @throws InvalidOtpException if OTP is invalid or expired
-   */
   async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<AuthResponseDto> {
-    const { mobile, otp } = verifyOtpDto;
+    const normalizedMobile = this.normalizeMobileNumber(verifyOtpDto.mobile);
 
     try {
-      // Verify OTP
-      this.otpService.verifyOtp(mobile, otp);
+      this.otpService.verifyOtp(normalizedMobile, verifyOtpDto.otp);
 
-      // Get or create user
-      let user = this.userStore.get(mobile);
+      let user = await this.userRepository.findOne({
+        where: { mobile_number: normalizedMobile },
+      });
 
       if (!user) {
-        user = {
-          id: uuidv4(),
-          mobile,
-          createdAt: new Date(),
-        };
-        this.userStore.set(mobile, user);
-        console.log(`[AUTH] New user created: ${user.id}`);
+        user = this.userRepository.create({
+          mobile_number: normalizedMobile,
+          is_active: true,
+          is_verified: false,
+        });
+        user = await this.userRepository.save(user);
       }
 
-      // Generate JWT token
-      const payload = { sub: user.id, mobile };
-      const access_token = this.jwtService.sign(payload);
-      this.sessionStore.add(access_token);
-
-      // Build response
-      const userData: UserDataDto = {
-        id: user.id,
-        mobile: user.mobile,
-        name: user.name,
+      const isAdmin = this.isConfiguredAdminMobile(normalizedMobile);
+      const payload = {
+        sub: user.id,
+        mobile: normalizedMobile,
+        isAdmin,
       };
 
-      console.log(`[AUTH] User verified: ${user.id}`);
+      const access_token = this.jwtService.sign(payload);
+      user.last_login = new Date();
+      user.session_token = access_token;
+      user.token_expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      user = await this.userRepository.save(user);
+
+      const userData: UserDataDto = {
+        id: user.id,
+        mobile: user.mobile_number,
+        name: user.full_name,
+        isAdmin,
+      };
+
+      console.log(`[AUTH] User verified: ${user.id} (${normalizedMobile})`);
 
       return {
         access_token,
@@ -125,25 +108,18 @@ export class AuthService {
     }
   }
 
-  /**
-   * Logout user
-   * Invalidates session and returns success
-   * 
-   * @param userId - User ID (from JWT)
-   * @returns Object with message
-   */
-  async logout(userId: string): Promise<{ message: string }> {
+  async logout(userId: number): Promise<{ message: string }> {
+    await this.userRepository.update(
+      { id: userId },
+      {
+        session_token: null as any,
+        token_expires_at: null as any,
+      },
+    );
     console.log(`[AUTH] User logout: ${userId}`);
-    // In production, add token to blacklist or revoke refresh tokens
     return { message: 'Logout successful' };
   }
 
-
-  /**
-   * Validate JWT token
-   * @param token - JWT token
-   * @returns Decoded payload
-   */
   validateToken(token: string): any {
     try {
       return this.jwtService.verify(token);
@@ -152,17 +128,30 @@ export class AuthService {
     }
   }
 
-  /**
-   * Get user by ID
-   * @param userId - User ID
-   * @returns User object or undefined
-   */
-  getUserById(userId: string): User | undefined {
-    for (const user of this.userStore.values()) {
-      if (user.id === userId) {
-        return user;
-      }
+  async getUserById(userId: number): Promise<User | null> {
+    return this.userRepository.findOne({ where: { id: userId } });
+  }
+
+  private normalizeMobileNumber(mobile: string): string {
+    let normalized = mobile.replace(/\D/g, '');
+
+    if (normalized.startsWith('91') && normalized.length > 10) {
+      normalized = normalized.slice(2);
     }
-    return undefined;
+
+    if (normalized.startsWith('0')) {
+      normalized = normalized.slice(1);
+    }
+
+    return normalized.slice(-10);
+  }
+
+  private isConfiguredAdminMobile(mobile: string): boolean {
+    const configuredMobile = process.env.ADMIN_MOBILE_NUMBER;
+    if (!configuredMobile) {
+      return false;
+    }
+
+    return this.normalizeMobileNumber(configuredMobile) === mobile;
   }
 }

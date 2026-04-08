@@ -5,6 +5,8 @@ import { ReferralPartnersController } from './referral-partners.controller';
 import { ReferralPartner } from '../../database/entities/referral-partner.entity';
 import { CommissionLedger } from '../../database/entities/commission-ledger.entity';
 import { User } from '../../database/entities/user.entity';
+import { DealReferralMapping } from '../../database/entities/deal-referral-mapping.entity';
+import { Deal } from '../../database/entities/deal.entity';
 
 /**
  * Referral Partners Module
@@ -60,7 +62,13 @@ import { User } from '../../database/entities/user.entity';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ReferralPartner, CommissionLedger, User]),
+    TypeOrmModule.forFeature([
+      ReferralPartner,
+      CommissionLedger,
+      User,
+      DealReferralMapping,
+      Deal,
+    ]),
   ],
   controllers: [ReferralPartnersController],
   providers: [ReferralPartnersService],

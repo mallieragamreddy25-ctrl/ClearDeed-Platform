@@ -11,6 +11,8 @@ import {
   HttpStatus,
   BadRequestException,
   Query,
+} from '@nestjs/common';
+import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
@@ -23,7 +25,7 @@ import {
   ApiForbiddenResponse,
   ApiParam,
   ApiQuery,
-} from '@nestjs/common';
+} from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
